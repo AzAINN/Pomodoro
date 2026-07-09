@@ -33,6 +33,18 @@ def test_stop_without_start_is_safe() -> None:
     Ringer(play=lambda name: None).stop()  # must not raise
 
 
+def test_rapid_start_stop_cycles_do_not_leak_threads() -> None:
+    import threading
+
+    baseline = threading.active_count()
+    ringer = Ringer(interval=0.001, play=lambda name: None)
+    for _ in range(50):
+        ringer.start()
+        ringer.stop()
+    time.sleep(0.1)  # let exiting threads finish
+    assert threading.active_count() <= baseline + 1
+
+
 def test_ringer_can_restart_after_stop() -> None:
     calls: list[str] = []
     ringer = Ringer(interval=0.01, play=calls.append)

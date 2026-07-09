@@ -32,11 +32,17 @@ def _play_once(sound: str) -> None:
         pass
 
 
+def _osascript_quote(text: str) -> str:
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def notify(title: str, message: str) -> None:
     """Post one macOS notification banner. No-op if osascript is unavailable."""
     osascript = shutil.which("osascript")
     if not osascript:
         return
+    title = _osascript_quote(title)
+    message = _osascript_quote(message)
     try:
         subprocess.run(
             [osascript, "-e", f'display notification "{message}" with title "{title}"'],
@@ -65,16 +71,23 @@ class Ringer:
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
-        if self._thread is not None and self._thread.is_alive() and not self._stop_event.is_set():
-            return
-        self._stop_event.clear()
-        self._thread = threading.Thread(target=self._loop, daemon=True)
+        if (
+            self._thread is not None
+            and self._thread.is_alive()
+            and not self._stop_event.is_set()
+        ):
+            return  # already ringing
+        stop_event = threading.Event()
+        self._stop_event = stop_event
+        self._thread = threading.Thread(
+            target=self._loop, args=(stop_event,), daemon=True
+        )
         self._thread.start()
 
-    def _loop(self) -> None:
-        while not self._stop_event.is_set():
+    def _loop(self, stop_event: threading.Event) -> None:
+        while not stop_event.is_set():
             self._play(self.sound)
-            self._stop_event.wait(self._interval)
+            stop_event.wait(self._interval)
 
     def stop(self) -> None:
         self._stop_event.set()
