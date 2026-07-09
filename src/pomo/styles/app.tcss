@@ -2,6 +2,11 @@ TabbedContent {
     height: 1fr;
 }
 
+TabbedContent > ContentSwitcher,
+TabbedContent TabPane {
+    height: 1fr;
+}
+
 TimerTab {
     align: center middle;
     height: 100%;
@@ -56,6 +61,7 @@ ModePills {
 }
 
 CalendarTab {
+    height: 1fr;
     padding: 1 2;
 }
 

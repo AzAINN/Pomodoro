@@ -89,6 +89,10 @@ class PomoApp(App):
         self.set_interval(HEARTBEAT_SECONDS, self._heartbeat)
         self.set_interval(0.5, self._flash)
 
+    def on_unmount(self) -> None:
+        """Finalize an active segment even when Textual shuts down externally."""
+        self.engine.reset()
+
     def _tick(self) -> None:
         self.engine.tick()
         self._refresh_timer()

@@ -53,7 +53,10 @@ class TimerTab(Vertical):
             mode = "long" if engine.break_kind == LONG_BREAK else "short"
         self.query_one(ModePills).set_mode(mode)
 
-        self.set_class(engine.phase is Phase.FOCUS and not engine.in_overtime, "-focus")
+        self.set_class(
+            engine.phase in (Phase.IDLE, Phase.FOCUS) and not engine.in_overtime,
+            "-focus",
+        )
         self.set_class(engine.in_overtime, "-overtime")
         self.set_class(engine.phase is Phase.BREAK and mode == "short", "-short")
         self.set_class(engine.phase is Phase.BREAK and mode == "long", "-long")

@@ -7,6 +7,8 @@ from textual.widgets import Button, TabbedContent
 from pomo.app import PomoApp
 from pomo.config import Settings
 from pomo.engine import Phase
+from pomo.screens.calendar_tab import CalendarTab
+from pomo.screens.timer_tab import TimerTab
 from pomo.store import Store
 from tests.test_engine_focus import FakeClock
 
@@ -52,6 +54,9 @@ async def test_boot_is_idle_with_start_button(tmp_path: Path) -> None:
     async with app.run_test():
         assert app.engine.phase is Phase.IDLE
         assert str(app.query_one("#main-button", Button).label) == "START"
+        timer = app.query_one(TimerTab)
+        assert timer.has_class("-focus")
+        assert timer.size.height > 0
 
 
 async def test_space_starts_focus_and_logs_segment(tmp_path: Path) -> None:
@@ -132,6 +137,7 @@ async def test_tab_switches_between_timer_and_calendar(tmp_path: Path) -> None:
         assert tabs.active == "timer-pane"
         await pilot.press("tab")
         assert tabs.active == "calendar-pane"
+        assert app.query_one(CalendarTab).size.height > 0
         await pilot.press("tab")
         assert tabs.active == "timer-pane"
 
@@ -158,6 +164,15 @@ async def test_quit_closes_open_segment(tmp_path: Path) -> None:
         await pilot.press("space")
         await pilot.press("q")
     assert app.engine.phase is Phase.IDLE
+
+
+async def test_external_shutdown_closes_open_segment(tmp_path: Path) -> None:
+    app, _, _, _ = make_app(tmp_path)
+    async with app.run_test() as pilot:
+        await pilot.press("space")
+        assert app.engine.running
+    assert app.engine.phase is Phase.IDLE
+    assert not app.engine.running
 
 
 async def test_heartbeat_updates_open_segment(tmp_path: Path) -> None:
