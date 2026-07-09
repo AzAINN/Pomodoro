@@ -100,24 +100,71 @@ class TimerEngine:
             return "+" + _mmss(-rem)
         return _mmss(max(rem, 0))
 
+    def dots(self) -> tuple[int, int]:
+        """(filled, total) pomodoro progress toward the long break."""
+        interval = self.settings.long_break_interval
+        filled = self.completed_pomodoros % interval
+        if (
+            self.completed_pomodoros > 0
+            and filled == 0
+            and self.phase in (Phase.BREAK, Phase.RINGING)
+        ):
+            filled = interval
+        return filled, interval
+
     # -- commands ----------------------------------------------------------
 
     def toggle(self) -> None:
-        """Space / main button: start, pause, or resume."""
+        """Space / main button: start, pause, resume, or dismiss ringing."""
         if self.phase is Phase.IDLE:
             self._enter_focus()
+        elif self.phase is Phase.RINGING:
+            self.dismiss_ring()
         elif self.running:
             self._pause()
         else:
             self._resume()
 
-    def reset(self) -> None:
+    def start_break(self) -> None:
+        """End the focus session (b key / button) and start the due break."""
+        if self.phase is not Phase.FOCUS:
+            return
         if self.running:
+            self._run_started = None
+            self.events.segment_closed()
+        self.completed_pomodoros += 1
+        long_due = self.completed_pomodoros % self.settings.long_break_interval == 0
+        self.break_kind = LONG_BREAK if long_due else SHORT_BREAK
+        minutes = (
+            self.settings.long_break_minutes if long_due else self.settings.short_break_minutes
+        )
+        self._enter_phase(Phase.BREAK, minutes * 60, self.break_kind)
+
+    def dismiss_ring(self) -> None:
+        """Any key while ringing: silence and immediately start the next focus."""
+        if self.phase is not Phase.RINGING:
+            return
+        self.events.ringing_stopped()
+        self._enter_focus()
+
+    def reset(self) -> None:
+        if self.phase is Phase.RINGING:
+            self.events.ringing_stopped()
+        elif self.running:
             self._run_started = None
             self.events.segment_closed()
         self.phase = Phase.IDLE
         self._accum = 0.0
         self._target = 0.0
+
+    def tick(self) -> None:
+        """Advance time-driven transitions. Call at least once per second."""
+        if self.phase is Phase.BREAK and self.running and self.remaining() <= 0:
+            self._accum = self._target
+            self._run_started = None
+            self.phase = Phase.RINGING
+            self.events.segment_closed()
+            self.events.ringing_started()
 
     # -- internals ----------------------------------------------------------
 
