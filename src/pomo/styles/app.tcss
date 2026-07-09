@@ -1,0 +1,74 @@
+TabbedContent {
+    height: 1fr;
+}
+
+TimerTab {
+    align: center middle;
+    height: 100%;
+}
+
+TimerTab.-focus { background: #ba4949; }
+TimerTab.-overtime { background: #7f3838; }
+TimerTab.-short { background: #38858a; }
+TimerTab.-long { background: #397097; }
+TimerTab.-ringing { background: #38858a; }
+TimerTab.-ringing.flash { background: #e8b04b; }
+
+ModePills {
+    height: auto;
+    width: auto;
+}
+
+.pill {
+    margin: 0 1;
+    padding: 0 2;
+    color: white 60%;
+}
+
+.pill.active {
+    background: white 20%;
+    color: white;
+    text-style: bold;
+}
+
+#clock {
+    width: auto;
+    margin: 1 0;
+    color: white;
+}
+
+#dots {
+    width: auto;
+    margin-bottom: 1;
+    color: white;
+}
+
+#main-button {
+    min-width: 16;
+}
+
+#ring-prompt {
+    width: 100%;
+    text-align: center;
+    margin-top: 1;
+    color: white;
+    text-style: bold;
+}
+
+CalendarTab {
+    padding: 1 2;
+}
+
+#week-title {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#grid-scroll {
+    height: 1fr;
+}
+
+#week-totals {
+    margin-top: 1;
+    color: $text 60%;
+}
