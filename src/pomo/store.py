@@ -71,3 +71,67 @@ class Store:
             )
             for row in rows
         ]
+
+
+def _clamp_to_day(seg: Segment, day: date) -> tuple[datetime, datetime] | None:
+    """Portion of a closed segment that falls within `day`, or None."""
+    if seg.ended_at is None:
+        return None
+    day_start = datetime.combine(day, dtime.min)
+    day_end = day_start + timedelta(days=1)
+    start = max(seg.started_at, day_start)
+    end = min(seg.ended_at, day_end)
+    if end <= start:
+        return None
+    return start, end
+
+
+def hour_coverage(segments: list[Segment], day: date, hour: int) -> float:
+    """Seconds of overlap between segments and [day hour:00, hour+1:00)."""
+    cell_start = datetime.combine(day, dtime(hour=hour))
+    cell_end = cell_start + timedelta(hours=1)
+    total = 0.0
+    for seg in segments:
+        if seg.ended_at is None:
+            continue
+        start = max(seg.started_at, cell_start)
+        end = min(seg.ended_at, cell_end)
+        if end > start:
+            total += (end - start).total_seconds()
+    return total
+
+
+def day_total(segments: list[Segment], day: date) -> timedelta:
+    total = timedelta()
+    for seg in segments:
+        clamped = _clamp_to_day(seg, day)
+        if clamped:
+            total += clamped[1] - clamped[0]
+    return total
+
+
+def week_total(segments: list[Segment], monday: date) -> timedelta:
+    return sum(
+        (day_total(segments, monday + timedelta(days=d)) for d in range(7)),
+        timedelta(),
+    )
+
+
+def hour_range(segments: list[Segment], monday: date) -> tuple[int, int]:
+    """Inclusive (first, last) hour rows to draw, padded by one, default 9-17."""
+    touched: list[int] = []
+    for d in range(7):
+        day = monday + timedelta(days=d)
+        for seg in segments:
+            clamped = _clamp_to_day(seg, day)
+            if clamped is None:
+                continue
+            start, end = clamped
+            # last touched hour: back off a microsecond so an end exactly on
+            # the hour (or at midnight) does not count the next hour
+            last = (end - timedelta(microseconds=1)).hour
+            touched.append(start.hour)
+            touched.append(max(last, start.hour))
+    if not touched:
+        return 9, 17
+    return max(min(touched) - 1, 0), min(max(touched) + 1, 23)
