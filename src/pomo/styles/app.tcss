@@ -72,3 +72,38 @@ CalendarTab {
     margin-top: 1;
     color: $text 60%;
 }
+
+SettingsModal {
+    align: center middle;
+}
+
+#settings-grid {
+    grid-size: 2;
+    grid-gutter: 0 2;
+    grid-rows: auto;
+    width: 48;
+    height: auto;
+    padding: 1 2;
+    background: $surface;
+    border: round $primary;
+}
+
+#settings-title {
+    column-span: 2;
+    text-style: bold;
+}
+
+#settings-error {
+    column-span: 2;
+    color: $error;
+}
+
+#settings-buttons {
+    column-span: 2;
+    height: auto;
+    align-horizontal: right;
+}
+
+#settings-buttons Button {
+    margin-left: 2;
+}

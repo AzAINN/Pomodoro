@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Callable
 
 from textual import events
@@ -11,9 +12,10 @@ from textual.binding import Binding
 from textual.widgets import Button, Footer, TabbedContent, TabPane
 
 from pomo import sound
-from pomo.config import Settings, db_path, load_settings
+from pomo.config import Settings, config_path, db_path, load_settings, save_settings
 from pomo.engine import Phase, TimerEngine
 from pomo.screens.calendar_tab import CalendarTab
+from pomo.screens.settings import SettingsModal
 from pomo.screens.timer_tab import TimerTab
 from pomo.store import Store
 
@@ -29,6 +31,7 @@ class PomoApp(App):
         Binding("space", "toggle", "Start/Pause", priority=True),
         Binding("b", "start_break", "Break"),
         Binding("r", "reset", "Reset"),
+        Binding("s", "settings", "Settings"),
         Binding("tab", "switch_tab", "Timer/Calendar", priority=True),
         Binding("q", "quit", "Quit", priority=True),
     ]
@@ -43,6 +46,7 @@ class PomoApp(App):
     ) -> None:
         super().__init__()
         self.settings = settings or load_settings()
+        self.config_file: Path = config_path()
         self.store = store or Store(db_path())
         self.ringer = ringer or sound.Ringer(self.settings.sound)
         self._notifier = notifier
@@ -133,6 +137,23 @@ class PomoApp(App):
         if self._modal_open():
             return
         self.engine.reset()
+        self._refresh_timer()
+
+    def action_settings(self) -> None:
+        if self._modal_open() or self._dismiss_if_ringing():
+            return
+        self.push_screen(SettingsModal(self.settings), self._settings_saved)
+
+    def _settings_saved(self, result: Settings | None) -> None:
+        if result is None:
+            return
+        self.settings = result
+        self.engine.settings = result
+        self.ringer.sound = result.sound
+        try:
+            save_settings(result, self.config_file)
+        except OSError:
+            self.notify("Could not save settings", severity="error")
         self._refresh_timer()
 
     def action_switch_tab(self) -> None:
