@@ -1,7 +1,9 @@
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
-build/
-dist/
-*.egg-info/
+/target/
+/dist/
+**/__pycache__/
+.DS_Store
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*

@@ -1,0 +1,40 @@
+[package]
+name = "pomo-tui"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.89"
+description = "A quiet, accurate Pomodoro timer for your terminal"
+license = "MIT"
+repository = "https://github.com/AzAINN/Pomodoro"
+homepage = "https://github.com/AzAINN/Pomodoro"
+readme = "README.md"
+keywords = ["pomodoro", "timer", "tui", "focus", "productivity"]
+categories = ["command-line-utilities"]
+include = ["src/**/*.rs", "tests/**/*.rs", "examples/**/*.rs", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
+default-run = "pomo"
+
+[lib]
+name = "pomo"
+doc = false
+
+[[bin]]
+name = "pomo"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+chrono = "0.4"
+crossterm = "0.29"
+ratatui = "0.30.2"
+rusqlite = { version = "0.38", features = ["bundled"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempfile = "3"
+unicode-width = "0.2"
+
+[target.'cfg(unix)'.dependencies]
+signal-hook = "0.3"
+
+[profile.release]
+lto = "thin"
+strip = true

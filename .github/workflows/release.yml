@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Verify tag matches Cargo version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python -c "import os,tomllib; v=tomllib.load(open('Cargo.toml','rb'))['package']['version']; assert os.environ['RELEASE_TAG']=='v'+v, 'Tag must match Cargo.toml version'"
+      - name: Install musl compiler
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Install Rust target
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: rustup toolchain install stable --profile minimal --target "$BUILD_TARGET"
+        shell: bash
+      - name: Build standalone binary
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: cargo +stable build --release --locked --target "$BUILD_TARGET"
+        shell: bash
+      - name: Test the built executable
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        shell: bash
+        run: |
+          binary="target/$BUILD_TARGET/release/pomo"
+          if [[ "$RUNNER_OS" == Windows ]]; then binary="$binary.exe"; fi
+          "$binary" --version
+      - name: Package binary, license, and README
+        env:
+          BUILD_TARGET: ${{ matrix.target }}
+        run: python scripts/package_release.py --target "$BUILD_TARGET"
+        shell: bash
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  draft:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: Verify all five archives and assemble checksums
+        run: |
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          from scripts.package_release import TARGETS
+          lines = []
+          for target in TARGETS:
+              extension = 'zip' if target.endswith('windows-msvc') else 'tar.gz'
+              archive = Path('dist') / f'pomo-{target}.{extension}'
+              digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+              line = f'{digest}  {archive.name}\n'
+              assert archive.with_name(archive.name + '.sha256').read_text() == line
+              lines.append(line)
+          Path('dist/SHA256SUMS').write_text(''.join(lines), encoding='ascii')
+          PY
+      - name: Create or update the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true || {
+              echo 'Refusing to overwrite an already published release.' >&2
+              exit 1
+            }
+            gh release upload "$RELEASE_TAG" dist/*.tar.gz dist/*.zip dist/SHA256SUMS --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/*.tar.gz dist/*.zip dist/SHA256SUMS \
+              --draft --verify-tag --generate-notes --title "pomo $RELEASE_TAG"
+          fi
