@@ -59,4 +59,12 @@ cargo run --example preview -- calendar 100 32
 cargo run --example preview -- settings 40 16
 ```
 
+Regenerate the README visual directly from the Ratatui screen buffer:
+
+```sh
+cargo run --quiet --locked --example preview -- focus 100 30 --svg > docs/assets/pomo.svg
+```
+
+The fixture uses sample history and the Sage theme. SVG export needs no extra tools.
+
 See [releasing](docs/releasing.md) for package and GitHub Release maintenance.

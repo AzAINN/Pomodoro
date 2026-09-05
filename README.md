@@ -2,6 +2,10 @@
 
 A quiet Pomodoro timer for your terminal. Built with Rust and Ratatui.
 
+![pomo's Sage theme showing the focus timer, progress, daily totals, and keyboard controls](https://raw.githubusercontent.com/AzAINN/Pomodoro/main/docs/assets/pomo.svg)
+
+*The actual interface, rendered with sample data in the Sage theme.*
+
 - **Stay in flow.** Focus ends silently and continues into overtime.
 - **Keep it minimal.** Thin-line clock, three restrained themes, and a quiet mode.
 - **Count real work.** Live totals, a week calendar, and exact session times.
